@@ -21,6 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Append staging/chunk.txt
         run: |
           set -euo pipefail
@@ -39,4 +41,5 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add "$target"
           git commit -m "append chunk to $target (size $expect_size)"
+          git pull --rebase origin main
           git push
