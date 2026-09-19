@@ -1,0 +1,29 @@
+name: Fix part021 typo
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fix BT8LyenW case
+        run: |
+          set -euo pipefail
+          path=parts/morning.mp3.b64.part021
+          python3 - <<'PY'
+          path = "parts/morning.mp3.b64.part021"
+          with open(path) as f:
+              s = f.read()
+          if "BT8LyenW" not in s:
+              raise SystemExit("expected typo BT8LyenW not found; abort")
+          s2 = s.replace("BT8LyenW", "BT8LYenW", 1)
+          open(path, "w").write(s2)
+          print("fixed len", len(s2))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "$path"
+          git commit -m "fix morning part021 BT8LyenW->BT8LYenW"
+          git push
