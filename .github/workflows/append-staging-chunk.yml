@@ -1,0 +1,42 @@
+name: Append staging chunk
+on:
+  workflow_dispatch:
+    inputs:
+      target_path:
+        description: Path under repo to append to
+        required: true
+        type: string
+      expected_size:
+        description: Expected file size after append
+        required: true
+        type: string
+      expected_md5:
+        description: Expected md5 hex of file after append
+        required: true
+        type: string
+permissions:
+  contents: write
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Append staging/chunk.txt
+        run: |
+          set -euo pipefail
+          target="${{ inputs.target_path }}"
+          expect_size="${{ inputs.expected_size }}"
+          expect_md5="${{ inputs.expected_md5 }}"
+          test -f staging/chunk.txt
+          test -f "$target"
+          cat staging/chunk.txt >> "$target"
+          got_size=$(wc -c < "$target" | tr -d ' ')
+          got_md5=$(md5sum "$target" | awk '{print $1}')
+          echo "size=$got_size md5=$got_md5"
+          test "$got_size" = "$expect_size"
+          test "$got_md5" = "$expect_md5"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "$target"
+          git commit -m "append chunk to $target (size $expect_size)"
+          git push
