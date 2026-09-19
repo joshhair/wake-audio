@@ -8,6 +8,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Fix BT8LyenW case
         run: |
           set -euo pipefail
@@ -26,4 +28,5 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add "$path"
           git commit -m "fix morning part021 BT8LyenW->BT8LYenW"
+          git pull --rebase origin main
           git push
