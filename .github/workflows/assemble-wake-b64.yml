@@ -2,7 +2,7 @@ name: Assemble wake b64
 on:
   push:
     paths:
-      - 'parts80/**'
+      - 'parts/**'
   workflow_dispatch:
 permissions:
   contents: write
@@ -11,15 +11,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Concatenate parts80
+      - name: Concatenate parts
         run: |
           set -euo pipefail
-          if ls parts80/morning.mp3.b64.p* >/dev/null 2>&1; then
-            cat $(ls parts80/morning.mp3.b64.p* | sort) > morning.mp3.b64
+          NEED_M=64
+          NEED_A=148
+          M=$(ls parts/morning.mp3.b64.part* 2>/dev/null | wc -l)
+          A=$(ls parts/ambient.mp3.b64.part* 2>/dev/null | wc -l)
+          echo "morning parts=$M ambient parts=$A"
+          if [ "$M" -ge "$NEED_M" ]; then
+            cat $(ls parts/morning.mp3.b64.part* | sort) > morning.mp3.b64
             wc -c morning.mp3.b64
           fi
-          if ls parts80/ambient.mp3.b64.p* >/dev/null 2>&1; then
-            cat $(ls parts80/ambient.mp3.b64.p* | sort) > ambient.mp3.b64
+          if [ "$A" -ge "$NEED_A" ]; then
+            cat $(ls parts/ambient.mp3.b64.part* | sort) > ambient.mp3.b64
             wc -c ambient.mp3.b64
           fi
           git config user.name "github-actions[bot]"
@@ -28,6 +33,6 @@ jobs:
           if git diff --staged --quiet; then
             echo "No changes"
           else
-            git commit -m "assemble wake audio b64 from parts80"
+            git commit -m "assemble wake audio b64 from parts"
             git push
           fi
