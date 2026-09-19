@@ -1,0 +1,33 @@
+name: Assemble wake b64
+on:
+  push:
+    paths:
+      - 'parts/**'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  assemble:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Concatenate parts
+        run: |
+          set -euo pipefail
+          if ls parts/morning.mp3.b64.part* >/dev/null 2>&1; then
+            cat $(ls parts/morning.mp3.b64.part* | sort) > morning.mp3.b64
+            wc -c morning.mp3.b64
+          fi
+          if ls parts/ambient.mp3.b64.part* >/dev/null 2>&1; then
+            cat $(ls parts/ambient.mp3.b64.part* | sort) > ambient.mp3.b64
+            wc -c ambient.mp3.b64
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add morning.mp3.b64 ambient.mp3.b64 || true
+          if git diff --staged --quiet; then
+            echo "No changes"
+          else
+            git commit -m "assemble wake audio b64 from parts"
+            git push
+          fi
