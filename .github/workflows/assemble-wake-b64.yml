@@ -1,8 +1,5 @@
 name: Assemble wake b64
 on:
-  push:
-    paths:
-      - 'parts/**'
   workflow_dispatch:
 permissions:
   contents: write
@@ -16,20 +13,23 @@ jobs:
           set -euo pipefail
           NEED_M=64
           NEED_A=148
-          M=$(ls parts/morning.mp3.b64.part* 2>/dev/null | wc -l)
-          A=$(ls parts/ambient.mp3.b64.part* 2>/dev/null | wc -l)
+          shopt -s nullglob
+          M_PARTS=(parts/morning.mp3.b64.part*)
+          A_PARTS=(parts/ambient.mp3.b64.part*)
+          M=${#M_PARTS[@]}
+          A=${#A_PARTS[@]}
           echo "morning parts=$M ambient parts=$A"
-          if [ "$M" -ge "$NEED_M" ]; then
-            cat $(ls parts/morning.mp3.b64.part* | sort) > morning.mp3.b64
-            wc -c morning.mp3.b64
+          if [ "$M" -lt "$NEED_M" ] || [ "$A" -lt "$NEED_A" ]; then
+            echo "Not enough parts yet (need morning>=$NEED_M ambient>=$NEED_A). Exiting OK."
+            exit 0
           fi
-          if [ "$A" -ge "$NEED_A" ]; then
-            cat $(ls parts/ambient.mp3.b64.part* | sort) > ambient.mp3.b64
-            wc -c ambient.mp3.b64
-          fi
+          IFS=$'\n'
+          cat $(printf '%s\n' "${M_PARTS[@]}" | sort) > morning.mp3.b64
+          cat $(printf '%s\n' "${A_PARTS[@]}" | sort) > ambient.mp3.b64
+          wc -c morning.mp3.b64 ambient.mp3.b64
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add morning.mp3.b64 ambient.mp3.b64 || true
+          git add morning.mp3.b64 ambient.mp3.b64
           if git diff --staged --quiet; then
             echo "No changes"
           else
