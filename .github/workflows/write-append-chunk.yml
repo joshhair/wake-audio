@@ -1,0 +1,78 @@
+name: Write and append chunk
+on:
+  workflow_dispatch:
+    inputs:
+      content_b64:
+        description: Base64 of chunk bytes to write to staging/chunk.txt
+        required: true
+        type: string
+      target_path:
+        description: Path under repo to append/create
+        required: true
+        type: string
+      expected_chunk_md5:
+        description: Expected md5 of decoded chunk
+        required: true
+        type: string
+      expected_chunk_size:
+        description: Expected size of decoded chunk
+        required: true
+        type: string
+      expected_size:
+        description: Expected file size after append
+        required: true
+        type: string
+      expected_md5:
+        description: Expected md5 of target after append
+        required: true
+        type: string
+permissions:
+  contents: write
+jobs:
+  write_append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Write staging and append/create target
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64, hashlib, os, pathlib, subprocess
+          content = base64.b64decode(os.environ['CONTENT_B64'])
+          exp_c_md5 = os.environ['EXP_CHUNK_MD5']
+          exp_c_size = int(os.environ['EXP_CHUNK_SIZE'])
+          target = os.environ['TARGET_PATH']
+          exp_size = int(os.environ['EXP_SIZE'])
+          exp_md5 = os.environ['EXP_MD5']
+          assert len(content) == exp_c_size, (len(content), exp_c_size)
+          got = hashlib.md5(content).hexdigest()
+          assert got == exp_c_md5, (got, exp_c_md5)
+          pathlib.Path('staging').mkdir(exist_ok=True)
+          pathlib.Path('staging/chunk.txt').write_bytes(content)
+          t = pathlib.Path(target)
+          t.parent.mkdir(parents=True, exist_ok=True)
+          if t.exists():
+              data = t.read_bytes() + content
+          else:
+              data = content
+          assert len(data) == exp_size, (len(data), exp_size)
+          got_md5 = hashlib.md5(data).hexdigest()
+          assert got_md5 == exp_md5, (got_md5, exp_md5)
+          t.write_bytes(data)
+          print(f'OK chunk={exp_c_size} target={target} size={exp_size} md5={exp_md5}')
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add staging/chunk.txt "${{ inputs.target_path }}"
+          git commit -m "write+append ${{ inputs.target_path }} (size ${{ inputs.expected_size }})"
+          git pull --rebase origin main
+          git push
+        env:
+          CONTENT_B64: ${{ inputs.content_b64 }}
+          EXP_CHUNK_MD5: ${{ inputs.expected_chunk_md5 }}
+          EXP_CHUNK_SIZE: ${{ inputs.expected_chunk_size }}
+          TARGET_PATH: ${{ inputs.target_path }}
+          EXP_SIZE: ${{ inputs.expected_size }}
+          EXP_MD5: ${{ inputs.expected_md5 }}
