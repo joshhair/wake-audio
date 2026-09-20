@@ -1,0 +1,40 @@
+name: Fix staging typos once
+on:
+  workflow_dispatch:
+    inputs:
+      sed_script:
+        description: sed -e script applied to staging/chunk.txt
+        required: true
+        type: string
+      expected_md5:
+        required: true
+        type: string
+      expected_size:
+        required: true
+        type: string
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply sed to staging/chunk.txt
+        run: |
+          set -euo pipefail
+          test -f staging/chunk.txt
+          sed -e "${{ inputs.sed_script }}" staging/chunk.txt > staging/chunk.txt.tmp
+          mv staging/chunk.txt.tmp staging/chunk.txt
+          got_size=$(wc -c < staging/chunk.txt | tr -d ' ')
+          got_md5=$(md5sum staging/chunk.txt | awk '{print $1}')
+          echo "size=$got_size md5=$got_md5"
+          test "$got_size" = "${{ inputs.expected_size }}"
+          test "$got_md5" = "${{ inputs.expected_md5 }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add staging/chunk.txt
+          git commit -m "fix staging typos (md5 ${{ inputs.expected_md5 }})"
+          git pull --rebase origin main
+          git push
